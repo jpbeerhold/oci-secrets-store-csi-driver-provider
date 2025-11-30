@@ -1,30 +1,26 @@
-name: BuildAndPush
+name: Build and Push OCI Provider Image
 
 on:
-  workflow_call:
-    inputs:
-      IMAGE_REGISTRY:
-        required: true
-        type: string
-    outputs:
-      IMAGE_PATH:
-        description: "Image Path"
-        value: ${{ jobs.image-build-and-push.outputs.IMAGE_PATH }}
+  push:
+    branches:
+      - main
 
 jobs:
   unit-tests:
+    # Reuse your existing unit test workflow
     uses: ./.github/workflows/unit-tests.yaml
 
   image-build-and-push:
-    needs: [unit-tests]
+    name: Build and push ARM64 container image
+    needs: unit-tests
     runs-on: ubuntu-latest
-    name: Builds ARM64 container image and pushes to registry
+
     env:
-      IMAGE_REGISTRY: ${{ inputs.IMAGE_REGISTRY }}
-    outputs:
-      IMAGE_PATH: ${{ steps.print-docker-image-path.outputs.IMAGE_PATH }}
+      # This must match IMAGE_REGISTRY in the Makefile (or override it)
+      IMAGE_REGISTRY: ghcr.io/jpbeerhold
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up QEMU
@@ -36,15 +32,16 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log into GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${GITHUB_ACTOR,,} --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${GITHUB_ACTOR,,}" --password-stdin
 
-      - name: Build image
-        run: IMAGE_REGISTRY="${{ env.IMAGE_REGISTRY }}" make docker-build
+      - name: Build ARM64 image
+        # Uses IMAGE_REGISTRY from env and IMAGE_NAME/IMAGE_TAG from the Makefile
+        run: make docker-build
 
-      - name: Push image
-        run: IMAGE_REGISTRY="${{ env.IMAGE_REGISTRY }}" make docker-push
+      - name: Push ARM64 image
+        run: make docker-push
 
       - name: Print image path
         id: print-docker-image-path
         run: |
-          echo "IMAGE_PATH=$(IMAGE_REGISTRY='${{ env.IMAGE_REGISTRY }}' make print-docker-image-path)" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_PATH=$(make print-docker-image-path)" >> "$GITHUB_OUTPUT"
