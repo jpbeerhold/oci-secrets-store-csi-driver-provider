@@ -8,8 +8,7 @@
 
 # Build metadata
 $(eval BUILD_DATE=$(shell date -u +%Y.%m.%d.%H.%M))
-$(eval GIT_TAG=$(shell git log -n 1 --pretty=format:"%H"))
-BUILD_VERSION=$(GIT_TAG)-$(BUILD_DATE)
+BUILD_VERSION=$(BUILD_DATE)
 
 # Image configuration
 IMAGE_REPO_NAME=oci-secrets-store-csi-driver-provider
